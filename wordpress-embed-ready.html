@@ -17,7 +17,7 @@ const CONFIG = {
   showSourceLogo: true,          // Show source logos next to source names
   refreshInterval: 60000,        // Refresh every 60 seconds
   dateFormat: 'short',           // 'short', 'long', or 'relative'
-  cacheExpiry: 300000            // Cache expiry in ms (5 minutes)
+  cacheExpiry: 1800000           // Cache expiry in ms (30 minutes)
 };
 
 // Main RSS Feed Display Class
@@ -69,9 +69,29 @@ class RSSFeedDisplay {
     setInterval(() => this.loadFeeds(), this.config.refreshInterval);
   }
 
-  async loadFeeds() {
+  async loadFeeds(retryCount = 0) {
+    const maxRetries = 3;
+    const retryDelay = Math.pow(2, retryCount) * 1000; // Exponential backoff: 1s, 2s, 4s
+    
     try {
-      const response = await fetch(`${RSS_API_URL}?limit=${this.config.maxPosts}`);
+      // Show loading indicator if no content is displayed
+      if (this.feeds.length === 0) {
+        this.renderLoading();
+      }
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      
+      const response = await fetch(`${RSS_API_URL}?limit=${this.config.maxPosts}`, {
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
       const data = await response.json();
       
       if (data.success) {
@@ -79,15 +99,22 @@ class RSSFeedDisplay {
         this.lastUpdate = new Date(data.lastUpdated);
         this.saveToCache(data.feeds, this.lastUpdate);
         this.render();
+        return;
       } else {
-        throw new Error('API returned error');
+        throw new Error('API returned error response');
       }
     } catch (error) {
-      console.error('Error loading RSS feeds:', error);
+      console.error(`Error loading RSS feeds (attempt ${retryCount + 1}):`, error);
       
-      // Try to fall back to cache if API fails
+      // If this isn't the last retry, try again after delay (but keep showing loading)
+      if (retryCount < maxRetries) {
+        setTimeout(() => this.loadFeeds(retryCount + 1), retryDelay);
+        return;
+      }
+      
+      // Final fallback: try to use cached data
       const cachedData = this.loadFromCache();
-      if (cachedData && this.feeds.length === 0) {
+      if (cachedData) {
         this.feeds = cachedData.feeds;
         this.lastUpdate = new Date(cachedData.timestamp);
         this.render();
