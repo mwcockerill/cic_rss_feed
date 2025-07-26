@@ -1,17 +1,22 @@
+<!-- RSS Feed Aggregator - Ready to Embed in WordPress -->
+<!-- Copy this entire block and paste it into your WordPress page/post in HTML mode -->
+
+<div id="rss-feed-container"></div>
+
+<script>
 // RSS Feed Aggregator WordPress Embed
-// Replace 'YOUR_RENDER_URL' with your actual Render deployment URL
 const RSS_API_URL = 'https://cic-rss-feed.onrender.com/api/feeds';
 
-// Configuration options
+// Configuration options - customize these as needed
 const CONFIG = {
   containerId: 'rss-feed-container',
-  maxPosts: 10,
-  showDate: true,
-  showSource: true,
-  showImages: true,
-  showSourceLogo: true,
-  refreshInterval: 60000, // 1 minute
-  dateFormat: 'short' // 'short', 'long', or 'relative'
+  maxPosts: 10,                  // Number of posts to show
+  showDate: true,                // Show publication dates
+  showSource: true,              // Show feed sources  
+  showImages: true,              // Show post thumbnails
+  showSourceLogo: true,          // Show source logos next to source names
+  refreshInterval: 60000,        // Refresh every 60 seconds
+  dateFormat: 'short'            // 'short', 'long', or 'relative'
 };
 
 // Main RSS Feed Display Class
@@ -325,6 +330,5 @@ class RSSFeedDisplay {
 }
 
 // Initialize the RSS feed display
-document.addEventListener('DOMContentLoaded', function() {
-  new RSSFeedDisplay();
-});
+new RSSFeedDisplay();
+</script>

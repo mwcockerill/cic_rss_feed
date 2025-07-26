@@ -12,8 +12,8 @@ app.use(express.json());
 
 // RSS feed URLs to aggregate
 const RSS_FEEDS = [
-  'https://feeds.feedburner.com/TechCrunch',
-  'https://feeds.bbci.co.uk/news/rss.xml'
+  'https://feeds.libsyn.com/136565/rss',
+  'https://cinemajaw.com/wordpress/feed/'
 ];
 
 let aggregatedFeed = [];
