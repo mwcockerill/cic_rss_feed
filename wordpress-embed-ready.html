@@ -16,7 +16,8 @@ const CONFIG = {
   showImages: true,              // Show post thumbnails
   showSourceLogo: true,          // Show source logos next to source names
   refreshInterval: 60000,        // Refresh every 60 seconds
-  dateFormat: 'short'            // 'short', 'long', or 'relative'
+  dateFormat: 'short',           // 'short', 'long', or 'relative'
+  cacheExpiry: 300000            // Cache expiry in ms (5 minutes)
 };
 
 // Main RSS Feed Display Class
@@ -26,6 +27,7 @@ class RSSFeedDisplay {
     this.container = null;
     this.feeds = [];
     this.lastUpdate = null;
+    this.cacheKey = 'rss-feeds-cache';
     
     this.init();
   }
@@ -49,10 +51,18 @@ class RSSFeedDisplay {
     // Add CSS styles
     this.addStyles();
     
-    // Show loading indicator
-    this.renderLoading();
+    // Try to load from cache first
+    const cachedData = this.loadFromCache();
+    if (cachedData) {
+      this.feeds = cachedData.feeds;
+      this.lastUpdate = new Date(cachedData.timestamp);
+      this.render();
+    } else {
+      // Show loading indicator if no cache
+      this.renderLoading();
+    }
     
-    // Initial load
+    // Initial load (or refresh if cache exists)
     this.loadFeeds();
     
     // Set up refresh interval
@@ -67,13 +77,23 @@ class RSSFeedDisplay {
       if (data.success) {
         this.feeds = data.feeds;
         this.lastUpdate = new Date(data.lastUpdated);
+        this.saveToCache(data.feeds, this.lastUpdate);
         this.render();
       } else {
         throw new Error('API returned error');
       }
     } catch (error) {
       console.error('Error loading RSS feeds:', error);
-      this.renderError();
+      
+      // Try to fall back to cache if API fails
+      const cachedData = this.loadFromCache();
+      if (cachedData && this.feeds.length === 0) {
+        this.feeds = cachedData.feeds;
+        this.lastUpdate = new Date(cachedData.timestamp);
+        this.render();
+      } else {
+        this.renderError();
+      }
     }
   }
 
@@ -188,6 +208,40 @@ class RSSFeedDisplay {
   truncateText(text, maxLength) {
     if (!text) return '';
     return text.length > maxLength ? text.substr(0, maxLength) + '...' : text;
+  }
+
+  saveToCache(feeds, timestamp) {
+    try {
+      const cacheData = {
+        feeds: feeds,
+        timestamp: timestamp.getTime(),
+        cached: Date.now()
+      };
+      localStorage.setItem(this.cacheKey, JSON.stringify(cacheData));
+    } catch (error) {
+      console.warn('Unable to save to localStorage:', error);
+    }
+  }
+
+  loadFromCache() {
+    try {
+      const cached = localStorage.getItem(this.cacheKey);
+      if (!cached) return null;
+      
+      const cacheData = JSON.parse(cached);
+      const now = Date.now();
+      
+      // Check if cache has expired
+      if (now - cacheData.cached > this.config.cacheExpiry) {
+        localStorage.removeItem(this.cacheKey);
+        return null;
+      }
+      
+      return cacheData;
+    } catch (error) {
+      console.warn('Unable to load from localStorage:', error);
+      return null;
+    }
   }
 
   addStyles() {

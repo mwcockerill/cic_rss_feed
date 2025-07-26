@@ -57,7 +57,7 @@ Then use the shortcode: `[rss_feed max_posts="15" show_date="true"]`
 
 ## Configuration Options
 
-You can customize the display by modifying the `CONFIG` object in `wordpress-embed.js`:
+You can customize the display by modifying the `CONFIG` object in `wordpress-embed-ready.html`:
 
 ```javascript
 const CONFIG = {
@@ -66,8 +66,10 @@ const CONFIG = {
   showDate: true,                       // Show publication date
   showSource: true,                     // Show feed source
   showImages: true,                     // Show post thumbnails
+  showSourceLogo: true,                 // Show source logos next to names
   refreshInterval: 60000,               // Refresh every 60 seconds
-  dateFormat: 'short'                   // 'short', 'long', or 'relative'
+  dateFormat: 'short',                  // 'short', 'long', or 'relative'
+  cacheExpiry: 300000                   // Cache expiry in ms (5 minutes)
 };
 ```
 
@@ -99,3 +101,21 @@ const RSS_FEEDS = [
 - ✅ Error handling and fallbacks
 - ✅ Free Render hosting
 - ✅ Easy WordPress integration
+- ✅ **Smart caching** - localStorage cache for instant loading on return visits
+- ✅ **Loading indicators** - Animated spinners for better UX during fetch
+- ✅ **Offline resilience** - Falls back to cached content when API unavailable
+
+## Performance Features
+
+### localStorage Caching
+- **Instant display**: Cached feeds show immediately on page load
+- **5-minute cache expiry**: Ensures fresh content while improving performance
+- **Background updates**: Fresh data loads in background after showing cache
+- **Graceful fallback**: Shows cached content if API is temporarily unavailable
+- **Smart invalidation**: Automatically clears expired cache
+
+### Loading Experience
+- **Immediate feedback**: Loading spinner appears instantly
+- **Return visitor optimization**: Cached content displays immediately
+- **Mobile-optimized**: Especially beneficial for slower mobile connections
+- **Progressive enhancement**: Works even if localStorage is disabled

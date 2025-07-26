@@ -11,6 +11,8 @@ A lightweight Node.js service that aggregates multiple RSS feeds, sorts posts by
 - 🌐 **CORS enabled** - Ready for cross-origin requests from WordPress
 - 🚀 **Render ready** - Configured for free Render.com deployment
 - ⚡ **Lightweight** - Minimal dependencies and fast response times
+- 💾 **Smart caching** - WordPress embed includes localStorage for instant loading
+- 🔄 **Loading indicators** - Smooth UX with animated spinners during fetch
 
 ## API Endpoints
 
