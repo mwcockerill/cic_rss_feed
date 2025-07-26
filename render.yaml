@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: cic-rss-feed-aggregator
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
