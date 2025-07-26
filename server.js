@@ -18,6 +18,40 @@ const RSS_FEEDS = [
 
 let aggregatedFeed = [];
 
+// Function to extract image URL from RSS item
+function extractImageUrl(item) {
+  // Try different RSS image fields in order of preference
+  if (item.enclosure && item.enclosure.url && item.enclosure.type && item.enclosure.type.startsWith('image/')) {
+    return item.enclosure.url;
+  }
+  
+  if (item['media:thumbnail'] && item['media:thumbnail']['$'] && item['media:thumbnail']['$'].url) {
+    return item['media:thumbnail']['$'].url;
+  }
+  
+  if (item['media:content'] && item['media:content']['$'] && item['media:content']['$'].url && 
+      item['media:content']['$'].type && item['media:content']['$'].type.startsWith('image/')) {
+    return item['media:content']['$'].url;
+  }
+  
+  if (item.image && item.image.url) {
+    return item.image.url;
+  }
+  
+  if (item.image && typeof item.image === 'string') {
+    return item.image;
+  }
+  
+  // Try to extract image from content/description using regex
+  const content = item.content || item.description || '';
+  const imgMatch = content.match(/<img[^>]+src=['"](https?:\/\/[^'"]+)['"]/i);
+  if (imgMatch && imgMatch[1]) {
+    return imgMatch[1];
+  }
+  
+  return null;
+}
+
 // Function to fetch and parse RSS feeds
 async function fetchRSSFeeds() {
   try {
@@ -25,12 +59,16 @@ async function fetchRSSFeeds() {
     const feedPromises = RSS_FEEDS.map(async (feedUrl) => {
       try {
         const feed = await parser.parseURL(feedUrl);
+        const sourceLogoUrl = feed.image && feed.image.url ? feed.image.url : null;
+        
         return feed.items.map(item => ({
           title: item.title,
           link: item.link,
           pubDate: new Date(item.pubDate || item.isoDate),
           description: item.contentSnippet || item.content || item.description,
           source: feed.title,
+          sourceLogoUrl: sourceLogoUrl,
+          imageUrl: extractImageUrl(item),
           guid: item.guid || item.link
         }));
       } catch (error) {

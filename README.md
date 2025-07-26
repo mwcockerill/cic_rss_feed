@@ -7,6 +7,7 @@ A lightweight Node.js service that aggregates multiple RSS feeds, sorts posts by
 - 📡 **Multi-source aggregation** - Combines RSS feeds from multiple sources
 - ⏰ **Auto-updates** - Fetches new content every hour via cron job
 - 🔄 **Smart sorting** - Orders posts by publication date (most recent first)
+- 🖼️ **Image extraction** - Automatically extracts post thumbnails and source logos
 - 🌐 **CORS enabled** - Ready for cross-origin requests from WordPress
 - 🚀 **Render ready** - Configured for free Render.com deployment
 - ⚡ **Lightweight** - Minimal dependencies and fast response times
@@ -38,6 +39,8 @@ curl "http://localhost:3000/api/feeds?limit=10"
       "pubDate": "2024-01-15T09:45:00.000Z",
       "description": "Article summary or excerpt...",
       "source": "Source Publication Name",
+      "sourceLogoUrl": "https://example.com/logo.png",
+      "imageUrl": "https://example.com/article-image.jpg",
       "guid": "unique-article-identifier"
     }
   ]

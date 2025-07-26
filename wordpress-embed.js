@@ -8,6 +8,7 @@ const CONFIG = {
   maxPosts: 10,
   showDate: true,
   showSource: true,
+  showImages: true,
   refreshInterval: 60000, // 1 minute
   dateFormat: 'short' // 'short', 'long', or 'relative'
 };
@@ -87,17 +88,26 @@ class RSSFeedDisplay {
 
   renderFeedItem(feed) {
     const date = new Date(feed.pubDate);
+    const hasImage = this.config.showImages && feed.imageUrl;
+    
     return `
-      <article class="rss-feed-item">
-        <h4 class="rss-feed-title">
-          <a href="${feed.link}" target="_blank" rel="noopener noreferrer">
-            ${feed.title}
-          </a>
-        </h4>
-        <p class="rss-feed-description">${this.truncateText(feed.description, 150)}</p>
-        <div class="rss-feed-meta">
-          ${this.config.showSource ? `<span class="rss-feed-source">${feed.source}</span>` : ''}
-          ${this.config.showDate ? `<span class="rss-feed-date">${this.formatDate(date)}</span>` : ''}
+      <article class="rss-feed-item ${hasImage ? 'has-image' : ''}">
+        ${hasImage ? `
+          <div class="rss-feed-image">
+            <img src="${feed.imageUrl}" alt="${feed.title}" loading="lazy" onerror="this.parentElement.style.display='none'">
+          </div>
+        ` : ''}
+        <div class="rss-feed-content">
+          <h4 class="rss-feed-title">
+            <a href="${feed.link}" target="_blank" rel="noopener noreferrer">
+              ${feed.title}
+            </a>
+          </h4>
+          <p class="rss-feed-description">${this.truncateText(feed.description, 150)}</p>
+          <div class="rss-feed-meta">
+            ${this.config.showSource ? `<span class="rss-feed-source">${feed.source}</span>` : ''}
+            ${this.config.showDate ? `<span class="rss-feed-date">${this.formatDate(date)}</span>` : ''}
+          </div>
         </div>
       </article>
     `;
@@ -192,8 +202,34 @@ class RSSFeedDisplay {
           transition: box-shadow 0.2s ease;
         }
         
+        .rss-feed-item.has-image {
+          display: flex;
+          gap: 15px;
+          align-items: flex-start;
+        }
+        
         .rss-feed-item:hover {
           box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .rss-feed-image {
+          flex-shrink: 0;
+          width: 120px;
+          height: 80px;
+          overflow: hidden;
+          border-radius: 6px;
+        }
+        
+        .rss-feed-image img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
+        }
+        
+        .rss-feed-content {
+          flex: 1;
+          min-width: 0;
         }
         
         .rss-feed-title {
@@ -244,6 +280,16 @@ class RSSFeedDisplay {
             flex-direction: column;
             align-items: flex-start;
             gap: 5px;
+          }
+          
+          .rss-feed-item.has-image {
+            flex-direction: column;
+            gap: 10px;
+          }
+          
+          .rss-feed-image {
+            width: 100%;
+            height: 160px;
           }
           
           .rss-feed-meta {

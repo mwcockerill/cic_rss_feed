@@ -65,6 +65,7 @@ const CONFIG = {
   maxPosts: 10,                         // Number of posts to display
   showDate: true,                       // Show publication date
   showSource: true,                     // Show feed source
+  showImages: true,                     // Show post thumbnails
   refreshInterval: 60000,               // Refresh every 60 seconds
   dateFormat: 'short'                   // 'short', 'long', or 'relative'
 };
@@ -92,8 +93,9 @@ const RSS_FEEDS = [
 - ✅ Automatic feed aggregation from multiple sources
 - ✅ Sorting by most recent posts
 - ✅ Hourly automatic updates via cron job
+- ✅ Image extraction from RSS feeds (post thumbnails and source logos)
 - ✅ CORS enabled for WordPress integration
-- ✅ Responsive design
+- ✅ Responsive design with mobile-optimized image layout
 - ✅ Error handling and fallbacks
 - ✅ Free Render hosting
 - ✅ Easy WordPress integration
