@@ -49,6 +49,9 @@ class RSSFeedDisplay {
     // Add CSS styles
     this.addStyles();
     
+    // Show loading indicator
+    this.renderLoading();
+    
     // Initial load
     this.loadFeeds();
     
@@ -126,6 +129,19 @@ class RSSFeedDisplay {
           </div>
         </div>
       </article>
+    `;
+  }
+
+  renderLoading() {
+    if (!this.container) return;
+    
+    this.container.innerHTML = `
+      <div class="rss-feed-wrapper">
+        <div class="rss-feed-loading">
+          <div class="rss-feed-spinner"></div>
+          <p>Loading latest news...</p>
+        </div>
+      </div>
     `;
   }
 
@@ -315,6 +331,34 @@ class RSSFeedDisplay {
         .rss-feed-source {
           font-weight: 600;
           color: #4a5568;
+        }
+        
+        .rss-feed-loading {
+          padding: 40px 20px;
+          text-align: center;
+          color: #666;
+          background: #f7fafc;
+          border-radius: 8px;
+        }
+        
+        .rss-feed-loading p {
+          margin: 15px 0 0 0;
+          font-size: 14px;
+        }
+        
+        .rss-feed-spinner {
+          width: 32px;
+          height: 32px;
+          border: 3px solid #e2e8f0;
+          border-top: 3px solid #4299e1;
+          border-radius: 50%;
+          margin: 0 auto;
+          animation: rss-spinner-spin 1s linear infinite;
+        }
+        
+        @keyframes rss-spinner-spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
         }
         
         .rss-feed-error {
