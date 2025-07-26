@@ -9,7 +9,11 @@ const app = express();
 const parser = new RSSParser();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors());
+app.use(cors({
+  origin: ['https://mindframesfilm.com', 'http://localhost:3000', 'https://cic-rss-feed.onrender.com'],
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
 
 // Load RSS feeds from external configuration
