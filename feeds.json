@@ -1,0 +1,18 @@
+{
+  "feeds": [
+    {
+      "url": "https://feeds.libsyn.com/136565/rss",
+      "name": "Mindframe(s)",
+      "description": "Film and social commentary discussions"
+    },
+    {
+      "url": "https://cinemajaw.com/wordpress/feed/",
+      "name": "CinemaJaw", 
+      "description": "The Greatest Movies Podcast Ever"
+    }
+  ],
+  "settings": {
+    "maxPostsToKeep": 50,
+    "updateIntervalHours": 1
+  }
+}

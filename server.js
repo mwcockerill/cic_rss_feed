@@ -2,6 +2,8 @@ const express = require('express');
 const RSSParser = require('rss-parser');
 const cron = require('node-cron');
 const cors = require('cors');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 const parser = new RSSParser();
@@ -10,11 +12,37 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// RSS feed URLs to aggregate
-const RSS_FEEDS = [
-  'https://feeds.libsyn.com/136565/rss',
-  'https://cinemajaw.com/wordpress/feed/'
-];
+// Load RSS feeds from external configuration
+let feedConfig;
+try {
+  const configPath = path.join(__dirname, 'feeds.json');
+  const configData = fs.readFileSync(configPath, 'utf8');
+  feedConfig = JSON.parse(configData);
+} catch (error) {
+  console.error('Error loading feeds.json:', error.message);
+  // Fallback to hardcoded feeds if config file is missing
+  feedConfig = {
+    feeds: [
+      {
+        url: 'https://feeds.libsyn.com/136565/rss',
+        name: 'Mindframe(s)',
+        description: 'Film and social commentary discussions'
+      },
+      {
+        url: 'https://cinemajaw.com/wordpress/feed/',
+        name: 'CinemaJaw',
+        description: 'The Greatest Movies Podcast Ever'
+      }
+    ],
+    settings: {
+      maxPostsToKeep: 50,
+      updateIntervalHours: 1
+    }
+  };
+}
+
+const RSS_FEEDS = feedConfig.feeds.map(feed => feed.url);
+const MAX_POSTS = feedConfig.settings.maxPostsToKeep;
 
 let aggregatedFeed = [];
 
@@ -84,7 +112,7 @@ async function fetchRSSFeeds() {
       .flat()
       .filter(item => item.pubDate && !isNaN(item.pubDate))
       .sort((a, b) => b.pubDate - a.pubDate)
-      .slice(0, 50); // Keep only the 50 most recent posts
+      .slice(0, MAX_POSTS); // Keep only the most recent posts as configured
 
     console.log(`Successfully aggregated ${aggregatedFeed.length} posts`);
   } catch (error) {
@@ -111,6 +139,16 @@ app.get('/health', (req, res) => {
     status: 'healthy',
     feedCount: aggregatedFeed.length,
     lastUpdated: aggregatedFeed.length > 0 ? aggregatedFeed[0].pubDate : null
+  });
+});
+
+// Configuration endpoint
+app.get('/api/config', (req, res) => {
+  res.json({
+    success: true,
+    feeds: feedConfig.feeds,
+    settings: feedConfig.settings,
+    totalConfiguredFeeds: feedConfig.feeds.length
   });
 });
 

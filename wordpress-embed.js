@@ -90,31 +90,34 @@ class RSSFeedDisplay {
   renderFeedItem(feed) {
     const date = new Date(feed.pubDate);
     const hasImage = this.config.showImages && feed.imageUrl;
+    const hasSourceLogo = this.config.showSourceLogo && feed.sourceLogoUrl;
     
     return `
-      <article class="rss-feed-item ${hasImage ? 'has-image' : ''}">
-        ${hasImage ? `
-          <div class="rss-feed-image">
-            <img src="${feed.imageUrl}" alt="${feed.title}" loading="lazy" onerror="this.parentElement.style.display='none'">
-          </div>
-        ` : ''}
-        <div class="rss-feed-content">
-          <h4 class="rss-feed-title">
-            <a href="${feed.link}" target="_blank" rel="noopener noreferrer">
-              ${feed.title}
-            </a>
-          </h4>
-          <p class="rss-feed-description">${this.truncateText(feed.description, 150)}</p>
-          <div class="rss-feed-meta">
-            ${this.config.showSource ? `
-              <span class="rss-feed-source">
-                ${this.config.showSourceLogo && feed.sourceLogoUrl ? `
-                  <img src="${feed.sourceLogoUrl}" alt="${feed.source}" class="rss-source-logo" onerror="this.style.display='none'">
-                ` : ''}
-                ${feed.source}
-              </span>
+      <article class="rss-feed-item ${hasImage ? 'has-image' : ''} ${hasSourceLogo ? 'has-source-logo' : ''}">
+        <div class="rss-feed-layout">
+          ${hasSourceLogo ? `
+            <div class="rss-feed-source-logo">
+              <img src="${feed.sourceLogoUrl}" alt="${feed.source}" loading="lazy" onerror="this.parentElement.style.display='none'">
+            </div>
+          ` : ''}
+          <div class="rss-feed-main-content">
+            ${hasImage ? `
+              <div class="rss-feed-image">
+                <img src="${feed.imageUrl}" alt="${feed.title}" loading="lazy" onerror="this.parentElement.style.display='none'">
+              </div>
             ` : ''}
-            ${this.config.showDate ? `<span class="rss-feed-date">${this.formatDate(date)}</span>` : ''}
+            <div class="rss-feed-content">
+              <h4 class="rss-feed-title">
+                <a href="${feed.link}" target="_blank" rel="noopener noreferrer">
+                  ${feed.title}
+                </a>
+              </h4>
+              <p class="rss-feed-description">${this.truncateText(feed.description, 150)}</p>
+              <div class="rss-feed-meta">
+                ${this.config.showSource ? `<span class="rss-feed-source">${feed.source}</span>` : ''}
+                ${this.config.showDate ? `<span class="rss-feed-date">${this.formatDate(date)}</span>` : ''}
+              </div>
+            </div>
           </div>
         </div>
       </article>
@@ -210,14 +213,48 @@ class RSSFeedDisplay {
           transition: box-shadow 0.2s ease;
         }
         
-        .rss-feed-item.has-image {
+        .rss-feed-item:hover {
+          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .rss-feed-layout {
+          display: flex;
+          gap: 15px;
+          align-items: stretch;
+          min-height: 80px;
+        }
+        
+        .rss-feed-source-logo {
+          flex-shrink: 0;
+          width: 60px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 8px;
+          background: #f8f9fa;
+          border-radius: 8px;
+          border: 1px solid #e9ecef;
+        }
+        
+        .rss-feed-source-logo img {
+          max-width: 100%;
+          max-height: 100%;
+          width: auto;
+          height: auto;
+          object-fit: contain;
+          display: block;
+        }
+        
+        .rss-feed-main-content {
+          flex: 1;
+          min-width: 0;
           display: flex;
           gap: 15px;
           align-items: flex-start;
         }
         
-        .rss-feed-item:hover {
-          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        .rss-feed-main-content.has-image {
+          align-items: flex-start;
         }
         
         .rss-feed-image {
@@ -273,17 +310,6 @@ class RSSFeedDisplay {
         .rss-feed-source {
           font-weight: 600;
           color: #4a5568;
-          display: flex;
-          align-items: center;
-          gap: 6px;
-        }
-        
-        .rss-source-logo {
-          width: 16px;
-          height: 16px;
-          border-radius: 2px;
-          object-fit: contain;
-          flex-shrink: 0;
         }
         
         .rss-feed-error {
@@ -301,7 +327,18 @@ class RSSFeedDisplay {
             gap: 5px;
           }
           
-          .rss-feed-item.has-image {
+          .rss-feed-layout {
+            flex-direction: column;
+            gap: 10px;
+          }
+          
+          .rss-feed-source-logo {
+            width: 80px;
+            height: 60px;
+            align-self: center;
+          }
+          
+          .rss-feed-main-content {
             flex-direction: column;
             gap: 10px;
           }

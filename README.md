@@ -65,6 +65,34 @@ curl "http://localhost:3000/health"
 }
 ```
 
+### `GET /api/config`
+
+Returns the current RSS feed configuration and settings.
+
+**Example Request:**
+```bash
+curl "http://localhost:3000/api/config"
+```
+
+**Response Format:**
+```json
+{
+  "success": true,
+  "feeds": [
+    {
+      "url": "https://feeds.libsyn.com/136565/rss",
+      "name": "Mindframe(s)",
+      "description": "Film and social commentary discussions"
+    }
+  ],
+  "settings": {
+    "maxPostsToKeep": 50,
+    "updateIntervalHours": 1
+  },
+  "totalConfiguredFeeds": 2
+}
+```
+
 ## Local Development
 
 ### Prerequisites
@@ -87,17 +115,35 @@ The server will run on `http://localhost:3000` by default.
 
 ## Configuration
 
-### Adding RSS Sources
-Edit the `RSS_FEEDS` array in `server.js`:
+### Managing RSS Sources
+RSS feeds are configured in the external `feeds.json` file:
 
-```javascript
-const RSS_FEEDS = [
-  'https://feeds.feedburner.com/TechCrunch',
-  'https://rss.cnn.com/rss/edition.rss',
-  'https://feeds.bbci.co.uk/news/rss.xml',
-  'https://your-custom-feed.com/rss'
-];
+```json
+{
+  "feeds": [
+    {
+      "url": "https://feeds.libsyn.com/136565/rss",
+      "name": "Mindframe(s)",
+      "description": "Film and social commentary discussions"
+    },
+    {
+      "url": "https://cinemajaw.com/wordpress/feed/",
+      "name": "CinemaJaw",
+      "description": "The Greatest Movies Podcast Ever"
+    }
+  ],
+  "settings": {
+    "maxPostsToKeep": 50,
+    "updateIntervalHours": 1
+  }
+}
 ```
+
+**Benefits of External Configuration:**
+- Easy to modify feeds without code changes
+- Descriptive metadata for each feed
+- Configurable settings (max posts, update frequency)
+- Fallback to hardcoded feeds if config file is missing
 
 ### Environment Variables
 - `PORT` - Server port (default: 3000)
