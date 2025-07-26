@@ -17,7 +17,7 @@ const CONFIG = {
   showSourceLogo: true,          // Show source logos next to source names
   refreshInterval: 60000,        // Refresh every 60 seconds
   dateFormat: 'short',           // 'short', 'long', or 'relative'
-  cacheExpiry: 1800000           // Cache expiry in ms (30 minutes)
+  cacheExpiry: 86400000          // Cache expiry in ms (24 hours)
 };
 
 // Main RSS Feed Display Class
@@ -80,7 +80,7 @@ class RSSFeedDisplay {
       }
       
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout
       
       const response = await fetch(`${RSS_API_URL}?limit=${this.config.maxPosts}`, {
         signal: controller.signal
