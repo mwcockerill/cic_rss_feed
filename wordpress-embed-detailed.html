@@ -29,6 +29,9 @@ class RSSFeedDetailedDisplay {
     this.feeds = [];
     this.lastUpdate = null;
     this.cacheKey = 'rss-feeds-detailed-cache';
+    this.currentOffset = 0;
+    this.hasMore = true;
+    this.isLoading = false;
     
     this.init();
   }
@@ -70,20 +73,26 @@ class RSSFeedDetailedDisplay {
     setInterval(() => this.loadFeeds(), this.config.refreshInterval);
   }
 
-  async loadFeeds(retryCount = 0) {
+  async loadFeeds(retryCount = 0, isLoadMore = false) {
     const maxRetries = 3;
     const retryDelay = Math.pow(2, retryCount) * 1000; // Exponential backoff: 1s, 2s, 4s
+    
+    if (this.isLoading) return;
+    this.isLoading = true;
     
     try {
       // Show loading indicator if no content is displayed
       if (this.feeds.length === 0) {
         this.renderLoading();
+      } else if (isLoadMore) {
+        this.updateLoadMoreButton('Loading...');
       }
       
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout
       
-      const response = await fetch(`${RSS_API_URL}?limit=${this.config.maxPosts}`, {
+      const offset = isLoadMore ? this.currentOffset : 0;
+      const response = await fetch(`${RSS_API_URL}?limit=${this.config.maxPosts}&offset=${offset}`, {
         signal: controller.signal
       });
       
@@ -96,9 +105,21 @@ class RSSFeedDetailedDisplay {
       const data = await response.json();
       
       if (data.success) {
-        this.feeds = data.feeds;
+        if (isLoadMore) {
+          this.feeds = [...this.feeds, ...data.feeds];
+          this.currentOffset += data.feeds.length;
+        } else {
+          this.feeds = data.feeds;
+          this.currentOffset = data.feeds.length;
+        }
+        
+        this.hasMore = data.hasMore;
         this.lastUpdate = new Date(data.lastUpdated);
-        this.saveToCache(data.feeds, this.lastUpdate);
+        
+        if (!isLoadMore) {
+          this.saveToCache(this.feeds, this.lastUpdate);
+        }
+        
         this.render();
         return;
       } else {
@@ -109,20 +130,27 @@ class RSSFeedDetailedDisplay {
       
       // If this isn't the last retry, try again after delay (but keep showing loading)
       if (retryCount < maxRetries) {
-        setTimeout(() => this.loadFeeds(retryCount + 1), retryDelay);
+        setTimeout(() => this.loadFeeds(retryCount + 1, isLoadMore), retryDelay);
         return;
       }
       
       // Final fallback: try to use cached data
       const cachedData = this.loadFromCache();
-      if (cachedData) {
+      if (cachedData && !isLoadMore) {
         this.feeds = cachedData.feeds;
         this.lastUpdate = new Date(cachedData.timestamp);
         this.render();
       } else {
         this.renderError();
       }
+    } finally {
+      this.isLoading = false;
     }
+  }
+
+  async loadMoreFeeds() {
+    if (!this.hasMore || this.isLoading) return;
+    await this.loadFeeds(0, true);
   }
 
   render() {
@@ -137,10 +165,25 @@ class RSSFeedDetailedDisplay {
         <div class="rss-feed-detailed-list">
           ${this.feeds.map(feed => this.renderFeedItem(feed)).join('')}
         </div>
+        ${this.hasMore ? `
+          <div class="rss-feed-detailed-load-more">
+            <button id="load-more-btn" class="rss-feed-detailed-load-more-btn" onclick="window.rssDetailedInstance.loadMoreFeeds()">
+              Load More Posts
+            </button>
+          </div>
+        ` : ''}
       </div>
     `;
 
     this.container.innerHTML = html;
+  }
+
+  updateLoadMoreButton(text) {
+    const button = document.getElementById('load-more-btn');
+    if (button) {
+      button.textContent = text;
+      button.disabled = text === 'Loading...';
+    }
   }
 
   renderFeedItem(feed) {
@@ -481,6 +524,32 @@ class RSSFeedDetailedDisplay {
           border-radius: 8px;
         }
         
+        .rss-feed-detailed-load-more {
+          margin-top: 25px;
+          text-align: center;
+        }
+        
+        .rss-feed-detailed-load-more-btn {
+          background: #3182ce;
+          color: white;
+          border: none;
+          padding: 12px 24px;
+          border-radius: 6px;
+          font-size: 14px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: background-color 0.2s ease;
+        }
+        
+        .rss-feed-detailed-load-more-btn:hover:not(:disabled) {
+          background: #2c5282;
+        }
+        
+        .rss-feed-detailed-load-more-btn:disabled {
+          background: #a0aec0;
+          cursor: not-allowed;
+        }
+        
         @media (max-width: 768px) {
           .rss-feed-detailed-header {
             flex-direction: column;
@@ -526,5 +595,5 @@ class RSSFeedDetailedDisplay {
 }
 
 // Initialize the detailed RSS feed display
-new RSSFeedDetailedDisplay();
+window.rssDetailedInstance = new RSSFeedDetailedDisplay();
 </script>
