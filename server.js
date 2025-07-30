@@ -52,6 +52,11 @@ let aggregatedFeed = [];
 
 // Function to extract image URL from RSS item
 function extractImageUrl(item) {
+  // Try iTunes image first (common in podcast feeds)
+  if (item['itunes:image'] && item['itunes:image']['$'] && item['itunes:image']['$'].href) {
+    return item['itunes:image']['$'].href;
+  }
+  
   // Try different RSS image fields in order of preference
   if (item.enclosure && item.enclosure.url && item.enclosure.type && item.enclosure.type.startsWith('image/')) {
     return item.enclosure.url;
