@@ -6,7 +6,11 @@ const fs = require('fs');
 const path = require('path');
 
 const app = express();
-const parser = new RSSParser();
+const parser = new RSSParser({
+  customFields: {
+    item: ['itunes:image']
+  }
+});
 const PORT = process.env.PORT || 3000;
 
 app.use(cors({
@@ -53,8 +57,16 @@ let aggregatedFeed = [];
 // Function to extract image URL from RSS item
 function extractImageUrl(item) {
   // Try iTunes image first (common in podcast feeds)
+  if (item.itunes && item.itunes.image) {
+    return item.itunes.image;
+  }
+  
   if (item['itunes:image'] && item['itunes:image']['$'] && item['itunes:image']['$'].href) {
     return item['itunes:image']['$'].href;
+  }
+  
+  if (item['itunes:image'] && typeof item['itunes:image'] === 'string') {
+    return item['itunes:image'];
   }
   
   // Try different RSS image fields in order of preference
