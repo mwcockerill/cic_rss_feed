@@ -144,11 +144,18 @@ async function fetchRSSFeeds() {
 // API endpoint to get aggregated feeds
 app.get('/api/feeds', (req, res) => {
   const limit = parseInt(req.query.limit) || 20;
-  const limitedFeed = aggregatedFeed.slice(0, limit);
+  const offset = parseInt(req.query.offset) || 0;
+  
+  const startIndex = offset;
+  const endIndex = offset + limit;
+  const limitedFeed = aggregatedFeed.slice(startIndex, endIndex);
   
   res.json({
     success: true,
     count: limitedFeed.length,
+    total: aggregatedFeed.length,
+    offset: offset,
+    hasMore: endIndex < aggregatedFeed.length,
     lastUpdated: new Date().toISOString(),
     feeds: limitedFeed
   });

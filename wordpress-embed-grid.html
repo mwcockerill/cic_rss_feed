@@ -1,16 +1,16 @@
-<!-- RSS Feed Aggregator - Detailed View for WordPress -->
+<!-- RSS Feed Aggregator - Grid View for WordPress -->
 <!-- Copy this entire block and paste it into your WordPress page/post in HTML mode -->
 
-<div id="rss-feed-detailed-container"></div>
+<div id="rss-feed-grid-container"></div>
 
 <script>
-// RSS Feed Aggregator WordPress Embed - Detailed View
+// RSS Feed Aggregator WordPress Embed - Grid View
 const RSS_API_URL = 'https://cic-rss-feed.onrender.com/api/feeds';
 
 // Configuration options - customize these as needed
 const CONFIG = {
-  containerId: 'rss-feed-detailed-container',
-  maxPosts: 4,                   // Show 4 most recent posts
+  containerId: 'rss-feed-grid-container',
+  maxPosts: 4,                   // Show 4 posts in 2x2 grid
   showDate: true,                // Show publication dates
   showSource: true,              // Show feed sources  
   showImages: true,              // Show post images
@@ -18,17 +18,20 @@ const CONFIG = {
   refreshInterval: 60000,        // Refresh every 60 seconds
   dateFormat: 'short',           // 'short', 'long', or 'relative'
   cacheExpiry: 86400000,         // Cache expiry in ms (24 hours)
-  maxWords: 500                  // Show first 500 words of content
+  maxWords: 80                   // Show first 80 words of content
 };
 
-// Main RSS Feed Display Class - Detailed View
-class RSSFeedDetailedDisplay {
+// Main RSS Feed Display Class - Grid View
+class RSSFeedGridDisplay {
   constructor(config = {}) {
     this.config = { ...CONFIG, ...config };
     this.container = null;
     this.feeds = [];
     this.lastUpdate = null;
-    this.cacheKey = 'rss-feeds-detailed-cache';
+    this.cacheKey = 'rss-feeds-grid-cache';
+    this.currentOffset = 0;
+    this.hasMore = true;
+    this.isLoading = false;
     
     this.init();
   }
@@ -70,20 +73,26 @@ class RSSFeedDetailedDisplay {
     setInterval(() => this.loadFeeds(), this.config.refreshInterval);
   }
 
-  async loadFeeds(retryCount = 0) {
+  async loadFeeds(retryCount = 0, isLoadMore = false) {
     const maxRetries = 3;
     const retryDelay = Math.pow(2, retryCount) * 1000; // Exponential backoff: 1s, 2s, 4s
+    
+    if (this.isLoading) return;
+    this.isLoading = true;
     
     try {
       // Show loading indicator if no content is displayed
       if (this.feeds.length === 0) {
         this.renderLoading();
+      } else if (isLoadMore) {
+        this.updateLoadMoreButton('Loading...');
       }
       
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout
       
-      const response = await fetch(`${RSS_API_URL}?limit=${this.config.maxPosts}`, {
+      const offset = isLoadMore ? this.currentOffset : 0;
+      const response = await fetch(`${RSS_API_URL}?limit=${this.config.maxPosts}&offset=${offset}`, {
         signal: controller.signal
       });
       
@@ -96,9 +105,21 @@ class RSSFeedDetailedDisplay {
       const data = await response.json();
       
       if (data.success) {
-        this.feeds = data.feeds;
+        if (isLoadMore) {
+          this.feeds = [...this.feeds, ...data.feeds];
+          this.currentOffset += data.feeds.length;
+        } else {
+          this.feeds = data.feeds;
+          this.currentOffset = data.feeds.length;
+        }
+        
+        this.hasMore = data.hasMore;
         this.lastUpdate = new Date(data.lastUpdated);
-        this.saveToCache(data.feeds, this.lastUpdate);
+        
+        if (!isLoadMore) {
+          this.saveToCache(this.feeds, this.lastUpdate);
+        }
+        
         this.render();
         return;
       } else {
@@ -109,38 +130,60 @@ class RSSFeedDetailedDisplay {
       
       // If this isn't the last retry, try again after delay (but keep showing loading)
       if (retryCount < maxRetries) {
-        setTimeout(() => this.loadFeeds(retryCount + 1), retryDelay);
+        setTimeout(() => this.loadFeeds(retryCount + 1, isLoadMore), retryDelay);
         return;
       }
       
       // Final fallback: try to use cached data
       const cachedData = this.loadFromCache();
-      if (cachedData) {
+      if (cachedData && !isLoadMore) {
         this.feeds = cachedData.feeds;
         this.lastUpdate = new Date(cachedData.timestamp);
         this.render();
       } else {
         this.renderError();
       }
+    } finally {
+      this.isLoading = false;
     }
+  }
+
+  async loadMoreFeeds() {
+    if (!this.hasMore || this.isLoading) return;
+    await this.loadFeeds(0, true);
   }
 
   render() {
     if (!this.container) return;
 
     const html = `
-      <div class="rss-feed-detailed-wrapper">
-        <div class="rss-feed-detailed-header">
-          <h2>Latest News & Updates</h2>
+      <div class="rss-feed-grid-wrapper">
+        <div class="rss-feed-grid-header">
+          <h2>Latest News</h2>
           ${this.lastUpdate ? `<small>Updated: ${this.formatDate(this.lastUpdate)}</small>` : ''}
         </div>
-        <div class="rss-feed-detailed-list">
+        <div class="rss-feed-grid">
           ${this.feeds.map(feed => this.renderFeedItem(feed)).join('')}
         </div>
+        ${this.hasMore ? `
+          <div class="rss-feed-grid-load-more">
+            <button id="load-more-btn" class="rss-feed-grid-load-more-btn" onclick="window.rssGridInstance.loadMoreFeeds()">
+              Load More Posts
+            </button>
+          </div>
+        ` : ''}
       </div>
     `;
 
     this.container.innerHTML = html;
+  }
+
+  updateLoadMoreButton(text) {
+    const button = document.getElementById('load-more-btn');
+    if (button) {
+      button.textContent = text;
+      button.disabled = text === 'Loading...';
+    }
   }
 
   renderFeedItem(feed) {
@@ -150,37 +193,39 @@ class RSSFeedDetailedDisplay {
     const content = this.truncateToWords(feed.description, this.config.maxWords);
     
     return `
-      <article class="rss-feed-detailed-item">
-        <div class="rss-feed-detailed-header-section">
-          ${hasSourceLogo ? `
-            <div class="rss-feed-detailed-source-logo">
-              <img src="${feed.sourceLogoUrl}" alt="${feed.source}" loading="lazy" onerror="this.parentElement.style.display='none'">
-            </div>
-          ` : ''}
-          <div class="rss-feed-detailed-meta">
-            ${this.config.showSource ? `<span class="rss-feed-detailed-source">${feed.source}</span>` : ''}
-            ${this.config.showDate ? `<span class="rss-feed-detailed-date">${this.formatDate(date)}</span>` : ''}
-          </div>
-        </div>
-        
-        <h3 class="rss-feed-detailed-title">
-          <a href="${feed.link}" target="_blank" rel="noopener noreferrer">
-            ${feed.title}
-          </a>
-        </h3>
-        
+      <article class="rss-feed-grid-item">
         ${hasImage ? `
-          <div class="rss-feed-detailed-image">
-            <img src="${feed.imageUrl}" alt="${feed.title}" loading="lazy" onerror="this.style.display='none'">
+          <div class="rss-feed-grid-image">
+            <img src="${feed.imageUrl}" alt="${feed.title}" loading="lazy" onerror="this.parentElement.style.display='none'">
           </div>
         ` : ''}
         
-        <div class="rss-feed-detailed-content">
-          ${content}
-        </div>
-        
-        <div class="rss-feed-detailed-read-more">
-          <a href="${feed.link}" target="_blank" rel="noopener noreferrer">Read Full Article →</a>
+        <div class="rss-feed-grid-content">
+          <div class="rss-feed-grid-header-section">
+            ${hasSourceLogo ? `
+              <div class="rss-feed-grid-source-logo">
+                <img src="${feed.sourceLogoUrl}" alt="${feed.source}" loading="lazy" onerror="this.parentElement.style.display='none'">
+              </div>
+            ` : ''}
+            <div class="rss-feed-grid-meta">
+              ${this.config.showSource ? `<span class="rss-feed-grid-source">${feed.source}</span>` : ''}
+              ${this.config.showDate ? `<span class="rss-feed-grid-date">${this.formatDate(date)}</span>` : ''}
+            </div>
+          </div>
+          
+          <h3 class="rss-feed-grid-title">
+            <a href="${feed.link}" target="_blank" rel="noopener noreferrer">
+              ${feed.title}
+            </a>
+          </h3>
+          
+          <div class="rss-feed-grid-description">
+            ${content}
+          </div>
+          
+          <div class="rss-feed-grid-read-more">
+            <a href="${feed.link}" target="_blank" rel="noopener noreferrer">Read More →</a>
+          </div>
         </div>
       </article>
     `;
@@ -190,9 +235,9 @@ class RSSFeedDetailedDisplay {
     if (!this.container) return;
     
     this.container.innerHTML = `
-      <div class="rss-feed-detailed-wrapper">
-        <div class="rss-feed-detailed-loading">
-          <div class="rss-feed-detailed-spinner"></div>
+      <div class="rss-feed-grid-wrapper">
+        <div class="rss-feed-grid-loading">
+          <div class="rss-feed-grid-spinner"></div>
           <p>Loading latest news...</p>
         </div>
       </div>
@@ -203,8 +248,8 @@ class RSSFeedDetailedDisplay {
     if (!this.container) return;
     
     this.container.innerHTML = `
-      <div class="rss-feed-detailed-wrapper">
-        <div class="rss-feed-detailed-error">
+      <div class="rss-feed-grid-wrapper">
+        <div class="rss-feed-grid-error">
           <p>Unable to load RSS feeds at this time. Please try again later.</p>
         </div>
       </div>
@@ -290,17 +335,17 @@ class RSSFeedDetailedDisplay {
   }
 
   addStyles() {
-    if (document.getElementById('rss-feed-detailed-styles')) return;
+    if (document.getElementById('rss-feed-grid-styles')) return;
 
     const styles = `
-      <style id="rss-feed-detailed-styles">
-        .rss-feed-detailed-wrapper {
+      <style id="rss-feed-grid-styles">
+        .rss-feed-grid-wrapper {
           max-width: 100%;
           margin: 15px 0;
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
         
-        .rss-feed-detailed-header {
+        .rss-feed-grid-header {
           display: flex;
           justify-content: space-between;
           align-items: center;
@@ -309,58 +354,50 @@ class RSSFeedDetailedDisplay {
           border-bottom: 2px solid #f0f0f0;
         }
         
-        .rss-feed-detailed-header h2 {
+        .rss-feed-grid-header h2 {
           margin: 0;
           color: #333;
           font-size: 20px;
           font-weight: 600;
         }
         
-        .rss-feed-detailed-header small {
+        .rss-feed-grid-header small {
           color: #666;
           font-size: 11px;
         }
         
-        .rss-feed-detailed-list {
-          display: flex;
-          flex-direction: column;
-          gap: 25px;
+        .rss-feed-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 20px;
         }
         
-        .rss-feed-detailed-item {
-          padding: 18px;
+        .rss-feed-grid-item {
           border: 1px solid #e8e8e8;
           border-radius: 8px;
           background: #fff;
           box-shadow: 0 1px 3px rgba(0,0,0,0.03);
           transition: box-shadow 0.2s ease;
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
         }
         
-        .rss-feed-detailed-item:hover {
+        .rss-feed-grid-item:hover {
           box-shadow: 0 2px 8px rgba(0,0,0,0.08);
         }
         
-        .rss-feed-detailed-header-section {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          margin-bottom: 12px;
-        }
-        
-        .rss-feed-detailed-source-logo {
-          flex-shrink: 0;
-          width: 40px;
-          height: 40px;
+        .rss-feed-grid-image {
+          width: 100%;
+          height: 180px;
           display: flex;
           align-items: center;
           justify-content: center;
-          padding: 6px;
-          background: #fafafa;
-          border-radius: 6px;
-          border: 1px solid #efefef;
+          background: #f8f9fa;
+          padding: 10px;
         }
         
-        .rss-feed-detailed-source-logo img {
+        .rss-feed-grid-image img {
           max-width: 100%;
           max-height: 100%;
           width: auto;
@@ -369,83 +406,113 @@ class RSSFeedDetailedDisplay {
           display: block;
         }
         
-        .rss-feed-detailed-meta {
+        .rss-feed-grid-content {
+          padding: 15px;
+          flex: 1;
           display: flex;
           flex-direction: column;
-          gap: 3px;
         }
         
-        .rss-feed-detailed-source {
-          font-weight: 600;
-          color: #4a5568;
-          font-size: 13px;
-        }
-        
-        .rss-feed-detailed-date {
-          color: #718096;
-          font-size: 11px;
-        }
-        
-        .rss-feed-detailed-title {
-          margin: 0 0 14px 0;
-          font-size: 18px;
-          line-height: 1.3;
-          font-weight: 600;
-        }
-        
-        .rss-feed-detailed-title a {
-          color: #2c5282;
-          text-decoration: none;
-        }
-        
-        .rss-feed-detailed-title a:hover {
-          text-decoration: underline;
-        }
-        
-        .rss-feed-detailed-image {
-          margin: 14px auto;
-          border-radius: 6px;
-          overflow: hidden;
-          width: 40%;
+        .rss-feed-grid-header-section {
           display: flex;
-          justify-content: center;
+          align-items: center;
+          gap: 8px;
+          margin-bottom: 10px;
         }
         
-        .rss-feed-detailed-image img {
-          width: 100%;
+        .rss-feed-grid-source-logo {
+          flex-shrink: 0;
+          width: 24px;
+          height: 24px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 4px;
+          overflow: hidden;
+        }
+        
+        .rss-feed-grid-source-logo img {
+          max-width: 100%;
+          max-height: 100%;
+          width: auto;
           height: auto;
           object-fit: contain;
           display: block;
         }
         
-        .rss-feed-detailed-content {
+        .rss-feed-grid-meta {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+          min-width: 0;
+        }
+        
+        .rss-feed-grid-source {
+          font-weight: 600;
           color: #4a5568;
-          font-size: 15px;
-          line-height: 1.5;
-          margin: 14px 0;
+          font-size: 11px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
         
-        .rss-feed-detailed-read-more {
-          margin-top: 14px;
-          padding-top: 12px;
-          border-top: 1px solid #f0f0f0;
+        .rss-feed-grid-date {
+          color: #718096;
+          font-size: 10px;
         }
         
-        .rss-feed-detailed-read-more a {
-          color: #3182ce;
+        .rss-feed-grid-title {
+          margin: 0 0 8px 0;
+          font-size: 14px;
+          line-height: 1.3;
+          font-weight: 600;
+        }
+        
+        .rss-feed-grid-title a {
+          color: #2c5282;
           text-decoration: none;
-          font-weight: 500;
-          font-size: 13px;
-          display: inline-flex;
-          align-items: center;
-          gap: 4px;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
         }
         
-        .rss-feed-detailed-read-more a:hover {
+        .rss-feed-grid-title a:hover {
           text-decoration: underline;
         }
         
-        .rss-feed-detailed-loading {
+        .rss-feed-grid-description {
+          color: #4a5568;
+          font-size: 12px;
+          line-height: 1.4;
+          margin: 8px 0;
+          flex: 1;
+          display: -webkit-box;
+          -webkit-line-clamp: 3;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+        
+        .rss-feed-grid-read-more {
+          margin-top: auto;
+          padding-top: 8px;
+        }
+        
+        .rss-feed-grid-read-more a {
+          color: #3182ce;
+          text-decoration: none;
+          font-weight: 500;
+          font-size: 11px;
+          display: inline-flex;
+          align-items: center;
+          gap: 3px;
+        }
+        
+        .rss-feed-grid-read-more a:hover {
+          text-decoration: underline;
+        }
+        
+        .rss-feed-grid-loading {
           padding: 40px 20px;
           text-align: center;
           color: #666;
@@ -453,27 +520,27 @@ class RSSFeedDetailedDisplay {
           border-radius: 8px;
         }
         
-        .rss-feed-detailed-loading p {
+        .rss-feed-grid-loading p {
           margin: 12px 0 0 0;
           font-size: 14px;
         }
         
-        .rss-feed-detailed-spinner {
+        .rss-feed-grid-spinner {
           width: 32px;
           height: 32px;
           border: 3px solid #e2e8f0;
           border-top: 3px solid #4299e1;
           border-radius: 50%;
           margin: 0 auto;
-          animation: rss-detailed-spinner-spin 1s linear infinite;
+          animation: rss-grid-spinner-spin 1s linear infinite;
         }
         
-        @keyframes rss-detailed-spinner-spin {
+        @keyframes rss-grid-spinner-spin {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
         }
         
-        .rss-feed-detailed-error {
+        .rss-feed-grid-error {
           padding: 30px 20px;
           text-align: center;
           color: #666;
@@ -481,41 +548,54 @@ class RSSFeedDetailedDisplay {
           border-radius: 8px;
         }
         
+        .rss-feed-grid-load-more {
+          margin-top: 20px;
+          text-align: center;
+        }
+        
+        .rss-feed-grid-load-more-btn {
+          background: #3182ce;
+          color: white;
+          border: none;
+          padding: 12px 24px;
+          border-radius: 6px;
+          font-size: 14px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: background-color 0.2s ease;
+        }
+        
+        .rss-feed-grid-load-more-btn:hover:not(:disabled) {
+          background: #2c5282;
+        }
+        
+        .rss-feed-grid-load-more-btn:disabled {
+          background: #a0aec0;
+          cursor: not-allowed;
+        }
+        
         @media (max-width: 768px) {
-          .rss-feed-detailed-header {
+          .rss-feed-grid {
+            grid-template-columns: 1fr;
+            gap: 15px;
+          }
+          
+          .rss-feed-grid-header {
             flex-direction: column;
             align-items: flex-start;
             gap: 8px;
           }
           
-          .rss-feed-detailed-header h2 {
+          .rss-feed-grid-header h2 {
             font-size: 18px;
           }
           
-          .rss-feed-detailed-item {
-            padding: 15px;
+          .rss-feed-grid-content {
+            padding: 12px;
           }
           
-          .rss-feed-detailed-title {
-            font-size: 16px;
-          }
-          
-          .rss-feed-detailed-content {
-            font-size: 14px;
-          }
-          
-          .rss-feed-detailed-header-section {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 8px;
-          }
-          
-          .rss-feed-detailed-source-logo {
-            align-self: center;
-          }
-          
-          .rss-feed-detailed-list {
-            gap: 20px;
+          .rss-feed-grid-image {
+            height: 120px;
           }
         }
       </style>
@@ -525,6 +605,6 @@ class RSSFeedDetailedDisplay {
   }
 }
 
-// Initialize the detailed RSS feed display
-new RSSFeedDetailedDisplay();
+// Initialize the grid RSS feed display
+window.rssGridInstance = new RSSFeedGridDisplay();
 </script>
