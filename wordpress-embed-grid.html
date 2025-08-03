@@ -181,8 +181,17 @@ class RSSFeedGridDisplay {
   updateLoadMoreButton(text) {
     const button = document.getElementById('load-more-btn');
     if (button) {
-      button.textContent = text;
-      button.disabled = text === 'Loading...';
+      const isLoading = text === 'Loading...';
+      
+      if (isLoading) {
+        button.innerHTML = '<span class="button-spinner"></span> Loading...';
+        button.classList.add('loading');
+      } else {
+        button.innerHTML = text;
+        button.classList.remove('loading');
+      }
+      
+      button.disabled = isLoading;
     }
   }
 
@@ -572,6 +581,27 @@ class RSSFeedGridDisplay {
         .rss-feed-grid-load-more-btn:disabled {
           background: #a0aec0;
           cursor: not-allowed;
+        }
+        
+        .rss-feed-grid-load-more-btn.loading {
+          background: #718096;
+          position: relative;
+        }
+        
+        .button-spinner {
+          display: inline-block;
+          width: 12px;
+          height: 12px;
+          border: 2px solid #ffffff40;
+          border-top: 2px solid #ffffff;
+          border-radius: 50%;
+          animation: button-spin 1s linear infinite;
+          margin-right: 8px;
+        }
+        
+        @keyframes button-spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
         }
         
         @media (max-width: 768px) {
