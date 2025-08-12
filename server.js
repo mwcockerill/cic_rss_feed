@@ -14,9 +14,10 @@ const parser = new RSSParser({
 const PORT = process.env.PORT || 3000;
 
 app.use(cors({
-  origin: ['https://mindframesfilm.com', 'http://localhost:3000', 'https://cic-rss-feed.onrender.com'],
+  origin: true, // Allow all origins
   methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: false
 }));
 app.use(express.json());
 
