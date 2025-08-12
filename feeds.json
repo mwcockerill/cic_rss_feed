@@ -9,6 +9,11 @@
       "url": "https://cinemajaw.com/wordpress/feed/",
       "name": "CinemaJaw", 
       "description": "The Greatest Movies Podcast Ever"
+    },
+      {
+      "url": "https://thefilmologist.com/feed/",
+      "name": "The Filmologist", 
+      "description": "a hub for criticism and commentary on the latest movie releases"
     }
   ],
   "settings": {
